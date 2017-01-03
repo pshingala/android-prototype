@@ -19,7 +19,6 @@ public class DBEventService {
     public void writeOrder(WriteOrderEvent event) {
         try {
             event.orderModel.save();
-            Log.d("save order#:", String.valueOf(event.orderModel.getOrderNumber()));
         } catch (Exception e) {
             // do nothing
         }

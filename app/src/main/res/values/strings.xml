@@ -2,4 +2,16 @@
     <string name="app_name">AndroidPrototype</string>
     <string name="action_settings">Settings</string>
     <string name="button_send">OrdersList</string>
+    <string name="returned">RETURNED</string>
+    <string name="delivered">DELIVERED</string>
+    <string name="dispatched">DISPATCHED</string>
+    <string name="pending">PENDING</string>
+    <string name="partiallydispatched">PARTIALLY DISPATCHED</string>
+    <string name="readyfordispatch">READY FOR DISPATCH</string>
+    <string name="inprocess">IN PROCESS</string>
+    <string name="awaiting">AWAITING</string>
+    <string name="rejected">REJECTED</string>
+    <string name="closed">CLOSED</string>
+    <string name="paid">PAID</string>
+    <string name="partiallypaid">PARTIALLY PAID</string>
 </resources>

@@ -10,6 +10,29 @@
     <color name="colorAccent">#303F9F</color>
     <color name="colorTextLight">#aa338833</color>
 
+
+    <color name="rejectedRed">#cc3333</color>
+    <color name="finishedGray">#777777</color>
+    <color name="gorgeousGreen">#33aa33</color>
+    <color name="pendingOrange">#ff7733</color>
+    <color name="busyBlue">#3366ff</color>
+    <color name="waitingOrange">#ff9933</color>
+
+    <color name="rejectedRed99">#99cc3333</color>
+    <color name="finishedGray99">#99777777</color>
+    <color name="gorgeousGreen99">#9933aa33</color>
+    <color name="pendingOrange99">#99ff7733</color>
+    <color name="busyBlue99">#993366ff</color>
+    <color name="waitingOrange99">#99ff9933</color>
+
+    <color name="rejectedRedbb">#bbcc3333</color>
+    <color name="finishedGraybb">#bb777777</color>
+    <color name="gorgeousGreenbb">#bb33aa33</color>
+    <color name="pendingOrangebb">#bbff7733</color>
+    <color name="busyBluebb">#bb3366ff</color>
+    <color name="waitingOrangebb">#bbff9933</color>
+
+
     <!--blue-->
     <!--<color name="colorPrimary">#5599dd</color>-->
     <!--<color name="colorPrimaryDark">#336699</color>-->

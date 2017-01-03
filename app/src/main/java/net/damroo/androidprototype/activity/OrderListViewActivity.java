@@ -4,7 +4,6 @@ import android.app.LoaderManager;
 import android.content.CursorLoader;
 import android.content.Loader;
 import android.database.Cursor;
-import android.graphics.Color;
 import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Bundle;
@@ -13,23 +12,26 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.AbsListView;
 import android.widget.AdapterView;
+import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.SimpleCursorAdapter;
 import android.widget.Spinner;
 import android.widget.TextView;
 
-import net.damroo.androidprototype.activity.helper.OrderListCustomSpinnerAdapter;
-import net.damroo.androidprototype.events.DisplayOrderEvent;
-import net.damroo.androidprototype.events.DisplayEventType;
-import net.damroo.androidprototype.events.OrdersDownloadEvent;
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+
 import net.damroo.androidprototype.R;
+import net.damroo.androidprototype.activity.helper.OrderListCustomSpinnerAdapter;
+import net.damroo.androidprototype.events.DisplayEventType;
+import net.damroo.androidprototype.events.DisplayOrderEvent;
+import net.damroo.androidprototype.events.OrdersDownloadEvent;
 import net.damroo.androidprototype.service.DBEventService;
-import net.damroo.androidprototype.service.DaggerDaggerComponent;
 import net.damroo.androidprototype.service.DaggerComponent;
+import net.damroo.androidprototype.service.DaggerDaggerComponent;
 import net.damroo.androidprototype.service.NetworkEventService;
 
 import org.greenrobot.eventbus.EventBus;
@@ -52,10 +54,8 @@ import javax.inject.Inject;
 
 public class OrderListViewActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor>, SwipeRefreshLayout.OnRefreshListener {
 
-    private String LOG = "OrderListViewActivity";
-
     private DaggerComponent network;
-    private SimpleCursorAdapter mAdapter;
+    private SimpleCursorAdapter simpleCursorAdapter;
     private Spinner spinner;
     private Toolbar toolbar;
 
@@ -67,7 +67,7 @@ public class OrderListViewActivity extends AppCompatActivity implements LoaderMa
 
     // changing in PROJECTION means change in setViewBinder and SimpleCursorAdapter
     static String[] PROJECTION = new String[]{"orderId as _id", "orderNumber", "displayPrice", "creationDate", "displayNameCity", "displayDateItems", "viewedOn",
-            "returnedOn", "deliveredOn", "dispatchedOn", "pendingOn", "partialyDispatchedOn", "readyForDispatchOn", "inProcessOn", "rejectedOn", "closedOn", "paidOn", "partialyPaidOn"}; // select(PROJECTION)
+            "returnedOn", "deliveredOn", "dispatchedOn", "pendingOn", "partialyDispatchedOn", "readyForDispatchOn", "inProcessOn", "rejectedOn", "closedOn", "paidOn", "partialyPaidOn", "imageUrl"}; // select(PROJECTION)
 
     static String SELECTION = null; // where(SELECTION), SELECTION = "orderNumber > 1300"
 
@@ -80,11 +80,14 @@ public class OrderListViewActivity extends AppCompatActivity implements LoaderMa
     @Override
     public void onStart() {
         super.onStart();
+
+        // register eventbus everytime the app is started/restarted
         EventBus.getDefault().register(this);
         EventBus.getDefault().register(nes);
         EventBus.getDefault().register(des);
 
-        Log.d(LOG,"onStart");
+        // call event firstUse everytime we start/resume the app as default behaviour.
+        EventBus.getDefault().post(new OrdersDownloadEvent("firstUse"));
     }
 
     @Override
@@ -105,175 +108,87 @@ public class OrderListViewActivity extends AppCompatActivity implements LoaderMa
         }
         addItemsToSpinner();
 
-        // Create a progress bar to display while the list loads
-        ProgressBar progressBar = new ProgressBar(this);
-        progressBar.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT));
-        progressBar.setIndeterminate(true);
-
         final ListView listView = (ListView) findViewById(R.id.orderList);
-        listView.setEmptyView(progressBar);
-
         swipeRefreshLayout = (SwipeRefreshLayout) findViewById(R.id.swipe_refresh_layout);
 
-        // some column values / styles are set below so
-        String[] fromColumns = {"orderNumber", "displayPrice", "displayDateItems", "displayPrice", "displayNameCity", "displayPrice", "displayPrice", "displayPrice"};
-        int[] toViews = {R.id.text1, R.id.text2, R.id.text3, R.id.text4, R.id.text5, R.id.text6, R.id.orderPaymentStatusBox, R.id.orderShippingStatusBox}; // The TextView in simple_list_item_1
+        // please notice that some values/styles are set in view binder
+        String[] fromColumns = {"orderNumber", "displayPrice", "displayDateItems", "displayPrice", "displayNameCity", "displayPrice", "imageUrl"};
+        int[] toViews = {R.id.orderNumberOrderList, R.id.displayPriceOrderList, R.id.displayItemDateOrderList, R.id.paymentStatusOrderList, R.id.displayNameCityOrderList, R.id.shippingStatusOrderList, R.id.orderImageOrderList}; // The TextView in simple_list_item_1
 
         // Create an empty adapter, pass null for the cursor, then update it in onLoadFinished()
-        mAdapter = new SimpleCursorAdapter(this,
+        simpleCursorAdapter = new SimpleCursorAdapter(this,
                 R.layout.content_orderlist, null,
                 fromColumns, toViews, 0);
 
-        mAdapter.setViewBinder(new SimpleCursorAdapter.ViewBinder() {
+        simpleCursorAdapter.setViewBinder(new SimpleCursorAdapter.ViewBinder() {
             @Override
             public boolean setViewValue(View view, Cursor cursor, int columnIndex) {
-                if (view.getId() == R.id.text1) {
+                int fontWeight = cursor.getString(cursor.getColumnIndex("viewedOn")) == null ? Typeface.BOLD : Typeface.NORMAL;
+                if (view.getId() == R.id.orderNumberOrderList) {
                     TextView tv = (TextView) view;
-                    if (cursor.getString(cursor.getColumnIndex("viewedOn")) == null) {
-                        tv.setTypeface(null, Typeface.BOLD);
-                    } else {
-                        tv.setTypeface(null, Typeface.NORMAL);
-                    }
+                    tv.setTypeface(null, fontWeight);
                     tv.setText(cursor.getString(cursor.getColumnIndex("orderNumber")));
                     return true;
                 }
-                if (view.getId() == R.id.text2) {
+                if (view.getId() == R.id.displayPriceOrderList) {
                     TextView tv = (TextView) view;
-                    if (cursor.getString(cursor.getColumnIndex("viewedOn")) == null) {
-                        tv.setTypeface(null, Typeface.BOLD);
-                    } else {
-                        tv.setTypeface(null, Typeface.NORMAL);
-                    }
+                    tv.setTypeface(null, fontWeight);
                     tv.setText(cursor.getString(cursor.getColumnIndex("displayPrice")));
                     return true;
                 }
-                if (view.getId() == R.id.text3) {
+                if (view.getId() == R.id.displayItemDateOrderList) {
                     TextView tv = (TextView) view;
-                    if (cursor.getString(cursor.getColumnIndex("viewedOn")) == null) {
-                        tv.setTypeface(null, Typeface.BOLD);
-                    } else {
-                        tv.setTypeface(null, Typeface.NORMAL);
-                    }
+                    tv.setTypeface(null, fontWeight);
                     tv.setText(cursor.getString(cursor.getColumnIndex("displayDateItems")));
                     return true;
                 }
-                if (view.getId() == R.id.text5) {
+                if (view.getId() == R.id.displayNameCityOrderList) {
                     TextView tv = (TextView) view;
-                    if (cursor.getString(cursor.getColumnIndex("viewedOn")) == null) {
-                        tv.setTypeface(null, Typeface.BOLD);
-                    } else {
-                        tv.setTypeface(null, Typeface.NORMAL);
-                    }
+                    tv.setTypeface(null, fontWeight);
                     tv.setText(cursor.getString(cursor.getColumnIndex("displayNameCity")));
                     return true;
                 }
 
                 // set processing status with color
-                if (view.getId() == R.id.text6) {
+                if (view.getId() == R.id.shippingStatusOrderList) {
                     TextView tv = (TextView) view;
-                    if (cursor.getString(cursor.getColumnIndex("returnedOn")) != null) {
-                        tv.setTextColor(Color.parseColor("#cc3333"));
-                        tv.setText("RETURNED");
-                    } else if (cursor.getString(cursor.getColumnIndex("deliveredOn")) != null) {
-                        tv.setTextColor(Color.parseColor("#777777"));
-                        tv.setText("DELIVERED");
-                    } else if (cursor.getString(cursor.getColumnIndex("dispatchedOn")) != null) {
-                        tv.setTextColor(Color.parseColor("#33aa33"));
-                        tv.setText("DISPATCHED");
-                    } else if (cursor.getString(cursor.getColumnIndex("pendingOn")) != null) {
-                        tv.setTextColor(Color.parseColor("#ff7733"));
-                        tv.setText("PENDING");
-                    } else if (cursor.getString(cursor.getColumnIndex("partialyDispatchedOn")) != null) {
-                        tv.setTextColor(Color.parseColor("#3366ff"));
-                        tv.setText("PARTIALLY DISPATCHED");
-                    } else if (cursor.getString(cursor.getColumnIndex("readyForDispatchOn")) != null) {
-                        tv.setTextColor(Color.parseColor("#3366ff"));
-                        tv.setText("READY FOR DISPATCH");
-                    } else if (cursor.getString(cursor.getColumnIndex("inProcessOn")) != null) {
-                        tv.setTextColor(Color.parseColor("#3366ff"));
-                        tv.setText("IN PROCESS");
-                    } else {
-                        tv.setTextColor(Color.parseColor("#ff9933"));
-                        tv.setText("AWAITING PROCESSING");
-                    }
+                    setShippingStatusTextView(tv, cursor);
                     return true;
                 }
 
                 // Set Payment status with color
-                if (view.getId() == R.id.text4) {
+                if (view.getId() == R.id.paymentStatusOrderList) {
                     TextView tv = (TextView) view;
-                    tv.setText("");
-                    if (cursor.getString(cursor.getColumnIndex("rejectedOn")) != null) {
-                        tv.setTextColor(Color.parseColor("#cc3333"));
-                        tv.setText("REJECTED");
-                    } else if (cursor.getString(cursor.getColumnIndex("closedOn")) != null) {
-                        tv.setTextColor(Color.parseColor("#777777"));
-                        tv.setText("CLOSED");
-                    } else if (cursor.getString(cursor.getColumnIndex("paidOn")) != null) {
-                        tv.setTextColor(Color.parseColor("#33aa33"));
-                        tv.setText("PAID");
-                    } else if (cursor.getString(cursor.getColumnIndex("partialyPaidOn")) != null) {
-                        tv.setTextColor(Color.parseColor("#3366ff"));
-                        tv.setText("PARTIALLY PAID");
-                    } else {
-                        tv.setTextColor(Color.parseColor("#ff9933"));
-                        tv.setText("AWAITING PAYMENT");
-                    }
+                    setPaymentStatusTextView(tv, cursor);
                     return true;
                 }
 
-                // Set background color of boxes
-                if (view.getId() == R.id.orderPaymentStatusBox) {
+                // Set Image
+                if (view.getId() == R.id.orderImageOrderList) {
+                    ImageView iv = (ImageView) view;
+                    Glide.with(view.getContext())
+                            .load(cursor.getString(cursor.getColumnIndex("imageUrl")))
+                            .placeholder(R.drawable.icon)
+                            .skipMemoryCache(false)
+                            .diskCacheStrategy(DiskCacheStrategy.ALL)
+                            .into(iv);
+                    return true;
+                }
 
-                    TextView tv = (TextView) view;
-                    tv.setText("");
-                    if (cursor.getString(cursor.getColumnIndex("rejectedOn")) != null) {
-                        tv.setBackgroundColor(Color.parseColor("#99cc3333"));
-                    } else if (cursor.getString(cursor.getColumnIndex("closedOn")) != null) {
-                        tv.setBackgroundColor(Color.parseColor("#99777777"));
-                    } else if (cursor.getString(cursor.getColumnIndex("paidOn")) != null) {
-                        tv.setBackgroundColor(Color.parseColor("#9933aa33"));
-                    } else if (cursor.getString(cursor.getColumnIndex("partialyPaidOn")) != null) {
-                        tv.setBackgroundColor(Color.parseColor("#993366ff"));
-                    } else {
-                        tv.setBackgroundColor(Color.parseColor("#99ff9933"));
-                    }
-                    return true;
-                }
-                if (view.getId() == R.id.orderShippingStatusBox) {
-                    TextView tv = (TextView) view;
-                    if (cursor.getString(cursor.getColumnIndex("returnedOn")) != null) {
-                        tv.setBackgroundColor(Color.parseColor("#bbcc3333"));
-                    } else if (cursor.getString(cursor.getColumnIndex("deliveredOn")) != null) {
-                        tv.setBackgroundColor(Color.parseColor("#bb777777"));
-                    } else if (cursor.getString(cursor.getColumnIndex("dispatchedOn")) != null) {
-                        tv.setBackgroundColor(Color.parseColor("#bb33aa33"));
-                    } else if (cursor.getString(cursor.getColumnIndex("pendingOn")) != null) {
-                        tv.setBackgroundColor(Color.parseColor("#bbff7733"));
-                    } else if (cursor.getString(cursor.getColumnIndex("partialyDispatchedOn")) != null) {
-                        tv.setBackgroundColor(Color.parseColor("#bb3366ff"));
-                    } else if (cursor.getString(cursor.getColumnIndex("readyForDispatchOn")) != null) {
-                        tv.setBackgroundColor(Color.parseColor("#bb3366ff"));
-                    } else if (cursor.getString(cursor.getColumnIndex("inProcessOn")) != null) {
-                        tv.setBackgroundColor(Color.parseColor("#bb3366ff"));
-                    } else {
-                        tv.setBackgroundColor(Color.parseColor("#bbff9933"));
-                    }
-                    return true;
-                }
+
                 return false;
             }
         });
-        listView.setAdapter(mAdapter);
+        listView.setAdapter(simpleCursorAdapter);
 
         swipeRefreshLayout.setOnRefreshListener(this);
 
         // Prepare the loader.  Either re-connect with an existing one, or start a new one.
         getLoaderManager().initLoader(0, null, this);
 
-        ProgressBar footer = new ProgressBar(this);
-        listView.addFooterView(footer);
+        // permanent progressbar in the bottom of the list view.
+        ProgressBar progressBar = new ProgressBar(this);
+        listView.addFooterView(progressBar);
 
         listView.setOnScrollListener(new AbsListView.OnScrollListener() {
             private int currentVisibleItemCount;
@@ -298,17 +213,17 @@ public class OrderListViewActivity extends AppCompatActivity implements LoaderMa
             }
 
             private void isScrollCompleted() {
-
-//              if (totalItem - currentFirstVisibleItem == totalItem && this.currentScrollState == SCROLL_STATE_IDLE) {}
+                // check if scroll is completed and hit bottom.
                 if (totalItem - currentFirstVisibleItem == currentVisibleItemCount
                         && this.currentScrollState == SCROLL_STATE_IDLE) {
 
-                    Log.d("Loading:", "bottom");
+                    Log.d("loading ... ", "older orders");
                     EventBus.getDefault().post(new OrdersDownloadEvent("downloadOldOrders"));
                 }
             }
 
         });
+
 
     }
 
@@ -362,44 +277,98 @@ public class OrderListViewActivity extends AppCompatActivity implements LoaderMa
 
     // Called when a previously created loader has finished loading
     public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
-        mAdapter.swapCursor(data);
+        simpleCursorAdapter.swapCursor(data);
     }
 
     // Called when a previously created loader is reset, making the data unavailable
     public void onLoaderReset(Loader<Cursor> loader) {
-        mAdapter.swapCursor(null);
+        simpleCursorAdapter.swapCursor(null);
     }
 
 
     @Override
     public void onRefresh() {
         swipeRefreshLayout.setRefreshing(true);
-        Log.d("Loading:", "top");
+        Log.d("loading ... ", "newer orders");
         EventBus.getDefault().post(new OrdersDownloadEvent("downloadNewOrders"));
     }
 
 
     @Override
     public void onStop() {
+        // unregister the eventbus
         EventBus.getDefault().unregister(nes);
         EventBus.getDefault().unregister(des);
         EventBus.getDefault().unregister(this);
 
-        Log.d("state:", "onStop");
         super.onStop();
     }
 
 
-    public void getOrdersForFirstUse(View v){
+    // trigger 'firstUse' event when sync button is clicked.
+    public void getOrdersForFirstUse(View view) {
         EventBus.getDefault().post(new OrdersDownloadEvent("firstUse"));
     }
 
-
+    // removes the progressbar set by swipeRefreshLayout (on swipe down gesture from top of the order-list).
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void stopLoadingAnimation(DisplayOrderEvent event) {
         if (event.type.equals(DisplayEventType.STOP_ANIMATION)) {
             swipeRefreshLayout.setRefreshing(false);
         }
+    }
+
+    // helper method. sets text and style to textview.
+    private void setPaymentStatusTextView(TextView tv, Cursor cursor) {
+        tv.setText("");
+        if (cursor.getString(cursor.getColumnIndex("rejectedOn")) != null) {
+            tv.setTextColor(getResources().getColor(R.color.rejectedRed));
+            tv.setText(R.string.rejected);
+        } else if (cursor.getString(cursor.getColumnIndex("closedOn")) != null) {
+            tv.setTextColor(getResources().getColor(R.color.finishedGray));
+            tv.setText(R.string.closed);
+        } else if (cursor.getString(cursor.getColumnIndex("paidOn")) != null) {
+            tv.setTextColor(getResources().getColor(R.color.gorgeousGreen));
+            tv.setText(R.string.paid);
+        } else if (cursor.getString(cursor.getColumnIndex("partialyPaidOn")) != null) {
+            tv.setTextColor(getResources().getColor(R.color.busyBlue));
+            tv.setText(R.string.partiallypaid);
+        } else {
+            tv.setTextColor(getResources().getColor(R.color.waitingOrange));
+            tv.setText(R.string.awaiting);
+        }
+        return;
+    }
+
+    // helper method. sets text and style to textview.
+    private void setShippingStatusTextView(TextView tv, Cursor cursor) {
+        tv.setText("");
+        if (cursor.getString(cursor.getColumnIndex("returnedOn")) != null) {
+            tv.setTextColor(getResources().getColor(R.color.rejectedRed));
+            tv.setText(R.string.returned);
+        } else if (cursor.getString(cursor.getColumnIndex("deliveredOn")) != null) {
+            tv.setTextColor(getResources().getColor(R.color.finishedGray));
+            tv.setText(R.string.delivered);
+        } else if (cursor.getString(cursor.getColumnIndex("dispatchedOn")) != null) {
+            tv.setTextColor(getResources().getColor(R.color.gorgeousGreen));
+            tv.setText(R.string.dispatched);
+        } else if (cursor.getString(cursor.getColumnIndex("pendingOn")) != null) {
+            tv.setTextColor(getResources().getColor(R.color.pendingOrange));
+            tv.setText(R.string.pending);
+        } else if (cursor.getString(cursor.getColumnIndex("partialyDispatchedOn")) != null) {
+            tv.setTextColor(getResources().getColor(R.color.busyBlue));
+            tv.setText(R.string.partiallydispatched);
+        } else if (cursor.getString(cursor.getColumnIndex("readyForDispatchOn")) != null) {
+            tv.setTextColor(getResources().getColor(R.color.busyBlue));
+            tv.setText(R.string.readyfordispatch);
+        } else if (cursor.getString(cursor.getColumnIndex("inProcessOn")) != null) {
+            tv.setTextColor(getResources().getColor(R.color.busyBlue));
+            tv.setText(R.string.inprocess);
+        } else {
+            tv.setTextColor(getResources().getColor(R.color.waitingOrange));
+            tv.setText(R.string.awaiting);
+        }
+        return;
     }
 
 }

@@ -31,7 +31,7 @@ public class OrderNetworkService {
     private EPRestAdapter rest;
 
     private OrderDBService orderDBService;
-    private final String resultsPerPage = "10";
+    private final String RESULTS_PER_PAGE = "10";
 
 
     @Inject
@@ -54,7 +54,6 @@ public class OrderNetworkService {
         } else if (event.name.equals("downloadNewOrders")) {
             try {
                 prepareDownloadNewOrders();
-                //TODO Since reverse downloading is not possible, somehow we need to varify from db that all pages are really downloaded!
             } finally {
                 EventBus.getDefault().post(new DisplayOrderEvent(DisplayEventType.STOP_ANIMATION));
             }
@@ -127,21 +126,21 @@ public class OrderNetworkService {
         Date queryDate = new Date(newTime);
         Map<String, String> params = new HashMap<>();
         params.put("createdBefore", Utility.getDateInString(queryDate));
-        params.put("resultsPerPage", resultsPerPage);
+        params.put("RESULTS_PER_PAGE", RESULTS_PER_PAGE);
         params.put("page", "1");
         downloadOrderPage(params);
     }
 
-
+    // In case of multiple order pages this method iterates over order pages calls downloadOrderPage
     private void iterateOrderPages(Map<String, String> params) {
         OrderPage page = getPrepareDownloadOrderPage(params);
         if (page != null) {
-            int totalPage = Utility.getLastPageNumber(page.getResults(), Double.parseDouble(resultsPerPage));
+            int totalPage = Utility.getLastPageNumber(page.getResults(), Double.parseDouble(RESULTS_PER_PAGE));
 
             for (int i = 1; i <= totalPage; i++) {
                 Map<String, String> paramsForDownload = new HashMap<>();
                 paramsForDownload.putAll(params);
-                paramsForDownload.put("resultsPerPage", resultsPerPage);
+                paramsForDownload.put("RESULTS_PER_PAGE", RESULTS_PER_PAGE);
                 paramsForDownload.put("page", String.valueOf(i));
                 downloadOrderPage(paramsForDownload);
             }
@@ -151,6 +150,7 @@ public class OrderNetworkService {
     }
 
 
+    // this method will iterate over orders in a given order page and trigger downloadDetailedOrder for the
     private void downloadOrderPage(Map<String, String> params) {
         try {
             Call<OrderPage> call = rest.getOrdersService(params);
@@ -165,7 +165,7 @@ public class OrderNetworkService {
         }
     }
 
-
+    // this method gets detailed order and sends event to save it in database.
     private void downloadDetailedOrder(String orderId) {
         // Get single orderModel
         Call<OrderModel> call = rest.getOrderService(orderId);
@@ -174,7 +174,6 @@ public class OrderNetworkService {
             public void onResponse(Call<OrderModel> call, Response<OrderModel> response) {
                 OrderModel orderModel = response.body();
                 EventBus.getDefault().post(new WriteOrderEvent(orderModel));
-
             }
 
             @Override
@@ -184,8 +183,9 @@ public class OrderNetworkService {
     }
 
 
+    // this method makes a call for computing total number of order pages before downloading
     private OrderPage getPrepareDownloadOrderPage(Map<String, String> params) {
-        params.put("resultsPerPage", "1");
+        params.put("RESULTS_PER_PAGE", "1");
         params.put("page", "1");
         Call<OrderPage> call = rest.getOrdersService(params);
         try {
@@ -196,6 +196,7 @@ public class OrderNetworkService {
     }
 
 
+    // get most recent order from the server
     private OrderModel getLatestNetworkOrder() {
         Call<OrderPage> call = rest.getOrdersService(null);
         OrderModel first = null;
@@ -210,12 +211,12 @@ public class OrderNetworkService {
         return first;
     }
 
-
+    // get one year old order from the server
     private OrderModel getOneYearOldNetworkOrder() {
 
         Map<String, String> params = new HashMap<>();
         params.put("createdAfter", Utility.getOneYearOldTimeStamp());
-        params.put("resultsPerPage", "10");
+        params.put("RESULTS_PER_PAGE", "10");
         Call<OrderPage> call = rest.getOrdersService(params);
         OrderPage page = null;
         try {
