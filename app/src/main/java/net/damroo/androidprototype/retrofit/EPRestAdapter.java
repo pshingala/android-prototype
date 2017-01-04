@@ -22,7 +22,7 @@ public class EPRestAdapter {
     protected Retrofit retrofit;
     protected OrderApi orderApi;
     protected final String baseUrl = "https://sandbox.epages.com/";
-    protected final String token = "Bearer xPJp9lif7gy9Tk07bp0nnMKsVNE9TBqP";
+    protected final String token = "Bearer x1X8dAbimCLrRovB4KWM0rzD7TmkycZO";
 
 
     public EPRestAdapter() {

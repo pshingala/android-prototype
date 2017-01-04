@@ -123,28 +123,27 @@ public class OrderListViewActivity extends AppCompatActivity implements LoaderMa
         simpleCursorAdapter.setViewBinder(new SimpleCursorAdapter.ViewBinder() {
             @Override
             public boolean setViewValue(View view, Cursor cursor, int columnIndex) {
-                int fontWeight = cursor.getString(cursor.getColumnIndex("viewedOn")) == null ? Typeface.BOLD : Typeface.NORMAL;
                 if (view.getId() == R.id.orderNumberOrderList) {
                     TextView tv = (TextView) view;
-                    tv.setTypeface(null, fontWeight);
+                    tv.setTypeface(null, cursor.getString(cursor.getColumnIndex("viewedOn")) == null ? Typeface.BOLD : Typeface.NORMAL);
                     tv.setText(cursor.getString(cursor.getColumnIndex("orderNumber")));
                     return true;
                 }
                 if (view.getId() == R.id.displayPriceOrderList) {
                     TextView tv = (TextView) view;
-                    tv.setTypeface(null, fontWeight);
+                    tv.setTypeface(null, cursor.getString(cursor.getColumnIndex("viewedOn")) == null ? Typeface.BOLD : Typeface.NORMAL);
                     tv.setText(cursor.getString(cursor.getColumnIndex("displayPrice")));
                     return true;
                 }
                 if (view.getId() == R.id.displayItemDateOrderList) {
                     TextView tv = (TextView) view;
-                    tv.setTypeface(null, fontWeight);
+                    tv.setTypeface(null, cursor.getString(cursor.getColumnIndex("viewedOn")) == null ? Typeface.BOLD : Typeface.NORMAL);
                     tv.setText(cursor.getString(cursor.getColumnIndex("displayDateItems")));
                     return true;
                 }
                 if (view.getId() == R.id.displayNameCityOrderList) {
                     TextView tv = (TextView) view;
-                    tv.setTypeface(null, fontWeight);
+                    tv.setTypeface(null, cursor.getString(cursor.getColumnIndex("viewedOn")) == null ? Typeface.BOLD : Typeface.NORMAL);
                     tv.setText(cursor.getString(cursor.getColumnIndex("displayNameCity")));
                     return true;
                 }
